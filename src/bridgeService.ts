@@ -1,6 +1,6 @@
 import { JevClient } from './jevClient';
 import { SemanticAdapter } from './adapters/base';
-import { ExecutionContext, BridgeExecutionResult } from './types';
+import { ExecutionContext, BridgeExecutionResult, SemanticCatalog } from './types';
 
 export class BridgeService {
   private jevClient: JevClient;
@@ -19,6 +19,28 @@ export class BridgeService {
    */
   public setAdapter(adapter: SemanticAdapter): void {
     this.adapter = adapter;
+  }
+
+  /**
+   * Updates the semantic catalog used for intent classification and member resolution.
+   */
+  public setCatalog(catalog: SemanticCatalog): void {
+    this.jevClient.setCatalog(catalog);
+    if ('setCatalog' in this.adapter && typeof (this.adapter as any).setCatalog === 'function') {
+      (this.adapter as any).setCatalog(catalog);
+    }
+  }
+
+  /**
+   * Auto-discovers catalog metadata from the current adapter (e.g. Cube /meta) and binds it to Jev.
+   */
+  public async syncCatalogWithAdapter(): Promise<SemanticCatalog> {
+    if (this.adapter.getCatalog) {
+      const catalog = await this.adapter.getCatalog();
+      this.setCatalog(catalog);
+      return catalog;
+    }
+    return this.jevClient.getCatalog();
   }
 
   public async processQuery(userPrompt: string, context: ExecutionContext): Promise<BridgeExecutionResult> {

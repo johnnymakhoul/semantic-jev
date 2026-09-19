@@ -1,5 +1,6 @@
 import { TypeSafeClient, choice, noul } from '@typesafe-ai/sdk';
-import { CanonicalQuery } from './types';
+import { CanonicalQuery, SemanticCatalog } from './types';
+import { DEFAULT_CATALOG } from './catalog';
 
 export interface JevInference {
   intent: string;
@@ -10,14 +11,17 @@ export interface JevInference {
 export class JevClient {
   private apiUrl: string;
   private apiKey: string;
+  private catalog: SemanticCatalog;
   private sdkClient: TypeSafeClient | null = null;
 
   constructor(
     apiUrl = process.env.JEV_API_URL || 'https://api.typesafe.ai',
-    apiKey = process.env.JEV_API_KEY || 'mock'
+    apiKey = process.env.JEV_API_KEY || 'mock',
+    catalog?: SemanticCatalog
   ) {
     this.apiUrl = apiUrl;
     this.apiKey = apiKey;
+    this.catalog = catalog || DEFAULT_CATALOG;
 
     if (this.apiKey && this.apiKey !== 'mock' && !this.apiKey.includes('your_')) {
       this.sdkClient = new TypeSafeClient({
@@ -27,23 +31,36 @@ export class JevClient {
     }
   }
 
+  public setCatalog(catalog: SemanticCatalog): void {
+    this.catalog = catalog;
+  }
+
+  public getCatalog(): SemanticCatalog {
+    return this.catalog;
+  }
+
   public async classify(prompt: string): Promise<JevInference> {
     // If live TypeSafe / Jev SDK client is available, execute calibrated System One inference
     if (this.sdkClient) {
       try {
+        // Dynamically build choice options from the user's semantic catalog
+        const metricCriteria: Record<string, string> = {};
+        for (const m of this.catalog.measures) {
+          metricCriteria[m.id] = m.description;
+        }
+        metricCriteria['none'] = 'No supported metric found or not an analytical metric query';
+
+        const dimensionCriteria: Record<string, string> = {};
+        for (const d of this.catalog.dimensions) {
+          dimensionCriteria[d.id] = d.description;
+        }
+        dimensionCriteria['none'] = 'No grouping dimension requested';
+
         const response = await this.sdkClient.systemOne({
           state: prompt,
           questions: {
-            metric: choice('Which canonical business metric is requested?', {
-              total_revenue: 'Financial revenue, sales, earnings, or cash intake',
-              active_users_count: 'Count of active users, customers, or accounts',
-              none: 'No supported metric found or not an analytical metric query'
-            }),
-            dimension: choice('What grouping or breakdown dimension is requested?', {
-              customer__region: 'Customer geographic region (e.g. EMEA, APAC, US)',
-              user_plan_tier: 'User or customer subscription tier or plan',
-              none: 'No grouping dimension requested'
-            }),
+            metric: choice('Which canonical business metric is requested?', metricCriteria),
+            dimension: choice('What grouping or breakdown dimension is requested?', dimensionCriteria),
             time_grain: choice('What time aggregation grain is requested?', {
               month: 'Monthly aggregation or by month',
               day: 'Daily aggregation or by day',
@@ -66,7 +83,7 @@ export class JevClient {
         const isAnalytic = response.answers.is_analytic_query.noul;
         const timeScope = response.answers.time_scope;
 
-        if (metricAnswer.choice === 'none' || isAnalytic < 0.4) {
+        if (metricAnswer.choice === 'none' || (metricAnswer.confidence < 0.6 && isAnalytic < 0.4)) {
           return {
             intent: 'unsupported',
             confidence: 0.32,
@@ -114,38 +131,47 @@ export class JevClient {
       }
     }
 
-    // Deterministic simulation fallback
+    // Catalog-driven heuristic fallback when live API is unreachable
     const normalized = prompt.toLowerCase();
+    const words = normalized.split(/\W+/).filter(w => w.length > 2);
 
-    if (normalized.includes('revenue') || normalized.includes('sales')) {
-      return {
-        intent: 'query_metric',
-        confidence: 0.95,
-        extractedQuery: {
-          metrics: ['total_revenue'],
-          dimensions: ['customer__region'],
-          timeDimensions: [
-            {
-              field: 'order_date',
-              granularity: 'month',
-              dateRange: 'This year'
-            }
-          ],
-          filters: normalized.includes('emea')
-            ? [{ field: 'customer__region', operator: 'equals', values: ['EMEA'] }]
-            : []
-        }
-      };
+    // Score catalog measures based on token overlap with their ID and description
+    let bestMeasure: typeof this.catalog.measures[0] | null = null;
+    let maxOverlap = 0;
+
+    for (const m of this.catalog.measures) {
+      const tokens = `${m.id} ${m.description}`.toLowerCase().split(/\W+/);
+      const overlap = words.filter(w => tokens.includes(w)).length;
+      if (overlap > maxOverlap) {
+        maxOverlap = overlap;
+        bestMeasure = m;
+      }
     }
 
-    if (normalized.includes('users') || normalized.includes('customers')) {
+    if (bestMeasure && maxOverlap > 0) {
+      // Find matching dimensions
+      const matchedDimensions = this.catalog.dimensions
+        .filter(d => {
+          const tokens = `${d.id} ${d.description}`.toLowerCase().split(/\W+/);
+          return words.some(w => tokens.includes(w));
+        })
+        .map(d => d.id);
+
+      // Check time granularity
+      const hasMonth = words.includes('month') || words.includes('monthly');
+      const hasDay = words.includes('day') || words.includes('daily');
+      const hasYear = words.includes('year') || words.includes('yearly');
+      const timeGrain = hasMonth ? 'month' : hasDay ? 'day' : hasYear ? 'year' : null;
+
+      const timeDim = this.catalog.timeDimensions?.[0];
+
       return {
         intent: 'query_metric',
-        confidence: 0.73, // Intermediate confidence -> prompts disambiguation
+        confidence: timeGrain ? 0.95 : 0.73,
         extractedQuery: {
-          metrics: ['active_users_count'],
-          dimensions: ['user_plan_tier'],
-          timeDimensions: [],
+          metrics: [bestMeasure.id],
+          dimensions: matchedDimensions,
+          timeDimensions: timeGrain && timeDim ? [{ field: timeDim.id, granularity: timeGrain as any, dateRange: 'This year' }] : [],
           filters: []
         }
       };
@@ -153,7 +179,7 @@ export class JevClient {
 
     return {
       intent: 'unsupported',
-      confidence: 0.32, // Low confidence -> rejection
+      confidence: 0.32,
       extractedQuery: { metrics: [], dimensions: [], filters: [], timeDimensions: [] }
     };
   }

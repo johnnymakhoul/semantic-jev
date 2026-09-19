@@ -55,3 +55,34 @@ export type BridgeExecutionResult =
   | { status: 'SUCCESS'; data: StandardExecutionResult; query: CanonicalQuery }
   | { status: 'DISAMBIGUATION_REQUIRED'; confidence: number; proposedQuery: CanonicalQuery; message: string }
   | { status: 'REJECTED'; confidence: number; reason: string };
+
+export const CatalogMeasureSchema = z.object({
+  id: z.string(),
+  member: z.string(),
+  description: z.string()
+});
+
+export const CatalogDimensionSchema = z.object({
+  id: z.string(),
+  member: z.string(),
+  description: z.string(),
+  type: z.enum(['string', 'number', 'boolean', 'time']).optional()
+});
+
+export const CatalogTimeDimensionSchema = z.object({
+  id: z.string(),
+  member: z.string(),
+  description: z.string(),
+  defaultGranularity: z.enum(['day', 'week', 'month', 'quarter', 'year']).optional()
+});
+
+export const SemanticCatalogSchema = z.object({
+  measures: z.array(CatalogMeasureSchema),
+  dimensions: z.array(CatalogDimensionSchema),
+  timeDimensions: z.array(CatalogTimeDimensionSchema).optional().default([])
+});
+
+export type CatalogMeasure = z.infer<typeof CatalogMeasureSchema>;
+export type CatalogDimension = z.infer<typeof CatalogDimensionSchema>;
+export type CatalogTimeDimension = z.infer<typeof CatalogTimeDimensionSchema>;
+export type SemanticCatalog = z.infer<typeof SemanticCatalogSchema>;

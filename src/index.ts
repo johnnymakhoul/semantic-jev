@@ -11,6 +11,7 @@ export * from './adapters/cubeAdapter';
 export * from './adapters/dbtAdapter';
 export * from './jevClient';
 export * from './bridgeService';
+export * from './catalog';
 
 export async function main() {
   const jev = new JevClient();
@@ -43,6 +44,9 @@ export async function main() {
       console.log(`[${result.data.provider}] Success! Rows returned:`, result.data.rows);
     } else if (result.status === 'DISAMBIGUATION_REQUIRED') {
       console.log(`[Disambiguation Required] Confidence: ${result.confidence} -> ${result.message}`);
+      console.log(`  -> User confirms: Executing confirmed query against Cube / SAMODb...`);
+      const confirmedData = await cubeAdapter.execute(result.proposedQuery, context);
+      console.log(`  -> [${confirmedData.provider}] Certified execution completed! Rows returned:`, confirmedData.rows);
     } else {
       console.log(`[Rejected] Confidence: ${result.confidence} -> ${result.reason}`);
     }

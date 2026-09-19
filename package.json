@@ -2,9 +2,12 @@
   "name": "semantic-jev",
   "version": "2.0.0",
   "description": "Universal semantic layer integration bridge powered by Jev",
-  "main": "dist/index.js",
+  "bin": {
+    "semantic-jev": "./dist/cli.js"
+  },
   "scripts": {
     "start": "ts-node src/index.ts",
+    "cli": "ts-node src/cli.ts",
     "build": "tsc",
     "test": "ts-node test/bridge.test.ts"
   },

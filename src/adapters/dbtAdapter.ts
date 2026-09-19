@@ -30,14 +30,16 @@ export class DbtSemanticAdapter implements SemanticAdapter {
       return `{{ Dimension('${f.field}') }} = ${val}`;
     });
 
+    const allColumns = [...groupByList, ...query.metrics];
+
     if (!process.env.DBT_SL_URL || this.serviceToken === 'your_dbt_service_token' || this.serviceToken === 'token') {
-      // Mock execution if running standalone
+      // Mock execution if running standalone without live dbt endpoint
       return {
         provider: this.providerName,
-        columns: [...groupByList, ...query.metrics],
+        columns: allColumns,
         rows: [
-          { 'customer__region': 'EMEA', 'order_date__month': '2026-08-01', 'total_revenue': 510000 },
-          { 'customer__region': 'EMEA', 'order_date__month': '2026-09-01', 'total_revenue': 540000 }
+          Object.fromEntries(allColumns.map(c => [c, query.metrics.includes(c) ? 510000 : `${c}_sample_1`])),
+          Object.fromEntries(allColumns.map(c => [c, query.metrics.includes(c) ? 540000 : `${c}_sample_2`]))
         ]
       };
     }
@@ -80,10 +82,10 @@ export class DbtSemanticAdapter implements SemanticAdapter {
       console.warn(`[${this.providerName}] Connection failed (${(err as Error).message}), returning mock data.`);
       return {
         provider: this.providerName,
-        columns: [...groupByList, ...query.metrics],
+        columns: allColumns,
         rows: [
-          { 'customer__region': 'EMEA', 'order_date__month': '2026-08-01', 'total_revenue': 510000 },
-          { 'customer__region': 'EMEA', 'order_date__month': '2026-09-01', 'total_revenue': 540000 }
+          Object.fromEntries(allColumns.map(c => [c, query.metrics.includes(c) ? 510000 : `${c}_sample_1`])),
+          Object.fromEntries(allColumns.map(c => [c, query.metrics.includes(c) ? 540000 : `${c}_sample_2`]))
         ]
       };
     }

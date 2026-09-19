@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import assert from 'node:assert';
 import { JevClient } from '../src/jevClient';
 import { CubeSemanticAdapter } from '../src/adapters/cubeAdapter';
