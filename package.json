@@ -9,6 +9,7 @@
     "test": "ts-node test/bridge.test.ts"
   },
   "dependencies": {
+    "@typesafe-ai/sdk": "^0.6.0",
     "axios": "^1.7.0",
     "dotenv": "^16.4.5",
     "zod": "^3.23.8"
