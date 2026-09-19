@@ -138,7 +138,7 @@ Verify services:
 
 ---
 
-## 💻 CLI Usage
+## CLI Usage
 
 `semantic-jev` comes with an interactive REPL and a one-shot CLI.
 
