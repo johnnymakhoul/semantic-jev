@@ -1,0 +1,33 @@
+cubes:
+  - name: SalesTerritories
+    sql_table: '"Sales"."SalesTerritory"'
+
+    measures:
+      - name: count
+        type: count
+
+      - name: sales_ytd
+        sql: '{CUBE}."SalesYTD"'
+        type: sum
+
+      - name: cost_ytd
+        sql: '{CUBE}."CostYTD"'
+        type: sum
+
+    dimensions:
+      - name: TerritoryID
+        sql: '{CUBE}."TerritoryID"'
+        type: number
+        primary_key: true
+
+      - name: name
+        sql: '{CUBE}."Name"'
+        type: string
+
+      - name: country_code
+        sql: '{CUBE}."CountryRegionCode"'
+        type: string
+
+      - name: territory_group
+        sql: '{CUBE}."Group"'
+        type: string

@@ -1,6 +1,6 @@
 import { TypeSafeClient, choice, noul } from '@typesafe-ai/sdk';
 import { CanonicalQuery, SemanticCatalog } from './types';
-import { DEFAULT_CATALOG } from './catalog';
+import { DEFAULT_CATALOG, loadCatalogFromFile } from './catalog';
 
 export interface JevInference {
   intent: string;
@@ -21,7 +21,7 @@ export class JevClient {
   ) {
     this.apiUrl = apiUrl;
     this.apiKey = apiKey;
-    this.catalog = catalog || DEFAULT_CATALOG;
+    this.catalog = catalog || loadCatalogFromFile();
 
     if (this.apiKey && this.apiKey !== 'mock' && !this.apiKey.includes('your_')) {
       this.sdkClient = new TypeSafeClient({

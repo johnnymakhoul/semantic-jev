@@ -103,6 +103,13 @@ function createAdapters(catalog: SemanticCatalog): { cube: CubeSemanticAdapter; 
   };
 }
 
+function formatDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${Math.round(ms)}ms`;
+  }
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
 async function executeQuery(
   bridge: BridgeService,
   adapter: SemanticAdapter,
@@ -112,19 +119,24 @@ async function executeQuery(
   confirm = false,
   rl?: readline.Interface
 ): Promise<void> {
+  const totalStartTime = performance.now();
   if (!json) {
     console.log(`\nAnalyzing prompt: "${prompt}"...`);
   }
 
+  const analysisStartTime = performance.now();
   const result = await bridge.processQuery(prompt, context);
+  const analysisDuration = performance.now() - analysisStartTime;
 
   if (json) {
-    console.log(JSON.stringify(result, null, 2));
+    const totalDuration = performance.now() - totalStartTime;
+    console.log(JSON.stringify({ ...result, durationMs: Math.round(totalDuration) }, null, 2));
     return;
   }
 
   if (result.status === 'SUCCESS') {
-    console.log(`\x1b[32m✔ [SUCCESS]\x1b[0m Confidence: High | Target Provider: ${result.data.provider}`);
+    const totalDuration = performance.now() - totalStartTime;
+    console.log(`\x1b[32m✔ [SUCCESS]\x1b[0m Confidence: High | Target Provider: ${result.data.provider} | Total time: \x1b[33m${formatDuration(totalDuration)}\x1b[0m (analysis: ${formatDuration(analysisDuration)})`);
     console.log(`Inferred Query:`, JSON.stringify(result.query, null, 2));
     console.log(`\nExecution Results (${result.data.rows.length} rows):`);
     if (result.data.rows.length > 0) {
@@ -133,7 +145,7 @@ async function executeQuery(
       console.log('No rows returned.');
     }
   } else if (result.status === 'DISAMBIGUATION_REQUIRED') {
-    console.log(`\x1b[33m? [DISAMBIGUATION REQUIRED]\x1b[0m Confidence: ${result.confidence}`);
+    console.log(`\x1b[33m? [DISAMBIGUATION REQUIRED]\x1b[0m Confidence: ${result.confidence} | Analysis time: \x1b[33m${formatDuration(analysisDuration)}\x1b[0m`);
     console.log(result.message);
     console.log(`Proposed Canonical Query:`, JSON.stringify(result.proposedQuery, null, 2));
 
@@ -150,18 +162,24 @@ async function executeQuery(
 
     if (shouldExecute) {
       console.log(`Executing confirmed query against ${adapter.providerName}...`);
+      const execStartTime = performance.now();
       const data = await adapter.execute(result.proposedQuery, context);
-      console.log(`\x1b[32m✔ Execution completed!\x1b[0m Rows returned (${data.rows.length}):`);
+      const execDuration = performance.now() - execStartTime;
+      const totalDuration = performance.now() - totalStartTime;
+
+      console.log(`\x1b[32m✔ Execution completed in \x1b[33m${formatDuration(execDuration)}\x1b[0m\x1b[32m!\x1b[0m (Total round-trip: \x1b[33m${formatDuration(totalDuration)}\x1b[0m) Rows returned (${data.rows.length}):`);
       if (data.rows.length > 0) {
         console.table(data.rows);
       } else {
         console.log('No rows returned.');
       }
     } else {
-      console.log('Execution cancelled.');
+      const totalDuration = performance.now() - totalStartTime;
+      console.log(`Execution cancelled. (Time elapsed: ${formatDuration(totalDuration)})`);
     }
   } else {
-    console.log(`\x1b[31m✖ [REJECTED]\x1b[0m Confidence: ${result.confidence}`);
+    const totalDuration = performance.now() - totalStartTime;
+    console.log(`\x1b[31m✖ [REJECTED]\x1b[0m Confidence: ${result.confidence} | Total time: \x1b[33m${formatDuration(totalDuration)}\x1b[0m`);
     console.log(`Reason: ${result.reason}`);
   }
 }
@@ -225,9 +243,11 @@ async function runRepl(
       }
 
       if (line === '/sync') {
+        const syncStart = performance.now();
         console.log(`Syncing semantic catalog with ${currentAdapter.providerName}...`);
         const synced = await bridge.syncCatalogWithAdapter();
-        console.log(`\x1b[32m✔ Catalog synchronized!\x1b[0m Active catalog now has ${synced.measures.length} measures and ${synced.dimensions.length} dimensions.`);
+        const syncDuration = performance.now() - syncStart;
+        console.log(`\x1b[32m✔ Catalog synchronized in \x1b[33m${formatDuration(syncDuration)}\x1b[0m!\x1b[0m Active catalog now has ${synced.measures.length} measures and ${synced.dimensions.length} dimensions.`);
         promptUser();
         return;
       }

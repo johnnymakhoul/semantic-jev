@@ -1,0 +1,37 @@
+cubes:
+  - name: Products
+    sql_table: '"Production"."Product"'
+
+    measures:
+      - name: count
+        type: count
+
+      - name: avg_list_price
+        sql: '{CUBE}."ListPrice"'
+        type: avg
+
+      - name: avg_standard_cost
+        sql: '{CUBE}."StandardCost"'
+        type: avg
+
+    dimensions:
+      - name: ProductID
+        sql: '{CUBE}."ProductID"'
+        type: number
+        primary_key: true
+
+      - name: name
+        sql: '{CUBE}."Name"'
+        type: string
+
+      - name: product_number
+        sql: '{CUBE}."ProductNumber"'
+        type: string
+
+      - name: color
+        sql: '{CUBE}."Color"'
+        type: string
+
+      - name: list_price
+        sql: '{CUBE}."ListPrice"'
+        type: number

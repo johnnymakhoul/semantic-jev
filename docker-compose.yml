@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: chriseaton/adventureworks:postgres
+    container_name: adventureworks-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  cube:
+    image: cubejs/cube:latest
+    container_name: cube-semantic-bridge
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - CUBEJS_DB_TYPE=postgres
+      - CUBEJS_DB_HOST=postgres
+      - CUBEJS_DB_PORT=5432
+      - CUBEJS_DB_NAME=postgres
+      - CUBEJS_DB_USER=postgres
+      - CUBEJS_DB_PASS=postgres
+      - CUBEJS_DEV_MODE=true
+      - CUBEJS_API_SECRET=your_cube_api_token
+      - CUBEJS_TELEMETRY=false
+    volumes:
+      - ./cube/model:/cube/conf/model
+      - ./cube/cube.js:/cube/conf/cube.js
+    restart: unless-stopped

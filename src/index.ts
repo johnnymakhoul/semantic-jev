@@ -27,13 +27,13 @@ export async function main() {
   };
 
   const testPrompts = [
-    'What was our monthly revenue in EMEA this year?',
-    'Show me active customers by tier',
+    'What is the total sales by territory group?',
+    'How many products do we have by color?',
     'What is the stock forecast for tomorrow?'
   ];
 
   console.log('===============================================================');
-  console.log('1. RUNNING WITH CUBE SEMANTIC LAYER');
+  console.log('1. RUNNING WITH CUBE SEMANTIC LAYER (AdventureWorks PostgreSQL)');
   console.log('===============================================================');
 
   for (const prompt of testPrompts) {
@@ -44,7 +44,7 @@ export async function main() {
       console.log(`[${result.data.provider}] Success! Rows returned:`, result.data.rows);
     } else if (result.status === 'DISAMBIGUATION_REQUIRED') {
       console.log(`[Disambiguation Required] Confidence: ${result.confidence} -> ${result.message}`);
-      console.log(`  -> User confirms: Executing confirmed query against Cube / SAMODb...`);
+      console.log(`  -> User confirms: Executing confirmed query against Cube / AdventureWorks...`);
       const confirmedData = await cubeAdapter.execute(result.proposedQuery, context);
       console.log(`  -> [${confirmedData.provider}] Certified execution completed! Rows returned:`, confirmedData.rows);
     } else {
@@ -58,7 +58,7 @@ export async function main() {
 
   bridge.setAdapter(dbtAdapter);
 
-  const dbtResult = await bridge.processQuery('What was our monthly revenue in EMEA this year?', context);
+  const dbtResult = await bridge.processQuery('What is the total sales by territory group?', context);
   if (dbtResult.status === 'SUCCESS') {
     console.log(`[${dbtResult.data.provider}] Success! Rows returned:`, dbtResult.data.rows);
   }

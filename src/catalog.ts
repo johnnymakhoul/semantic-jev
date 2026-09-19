@@ -5,83 +5,83 @@ import { SemanticCatalog, SemanticCatalogSchema } from './types';
 export const DEFAULT_CATALOG: SemanticCatalog = {
   measures: [
     {
-      id: 'feedbacks_count',
-      member: 'Feedbacks.count',
-      description: 'Total count of user feedback submissions or complaint tickets'
+      id: 'total_sales',
+      member: 'SalesOrders.total_sales',
+      description: 'Total sales revenue, monetary turnover, or gross sales amount'
     },
     {
-      id: 'total_escalations',
-      member: 'Feedbacks.total_escalations',
-      description: 'Total count or sum of ticket escalations'
+      id: 'orders_count',
+      member: 'SalesOrders.count',
+      description: 'Total count of sales orders placed'
     },
     {
-      id: 'contact_us_count',
-      member: 'ContactUs.count',
-      description: 'Total count of Contact Us inquiries and messages'
+      id: 'avg_order_value',
+      member: 'SalesOrders.avg_order_value',
+      description: 'Average sales order transaction value'
     },
     {
-      id: 'videos_count',
-      member: 'Videos.count',
-      description: 'Total count of uploaded or available videos'
+      id: 'tax_amount',
+      member: 'SalesOrders.tax_amount',
+      description: 'Total sales tax amount'
     },
     {
-      id: 'active_videos_count',
-      member: 'Videos.active_count',
-      description: 'Count of published, active videos'
+      id: 'freight_amount',
+      member: 'SalesOrders.freight_amount',
+      description: 'Total shipping and freight amount'
     },
     {
-      id: 'active_users_count',
-      member: 'Users.active_users_count',
-      description: 'Count of active, non-deleted user accounts'
+      id: 'products_count',
+      member: 'Products.count',
+      description: 'Total count of products in inventory/catalog'
     },
     {
-      id: 'total_revenue',
-      member: 'Orders.total_revenue',
-      description: 'Total sales revenue, monetary turnover, or gross income'
+      id: 'avg_product_price',
+      member: 'Products.avg_list_price',
+      description: 'Average list price of products'
+    },
+    {
+      id: 'customers_count',
+      member: 'Customers.count',
+      description: 'Total count of registered customers'
     }
   ],
   dimensions: [
     {
-      id: 'document_type_code',
-      member: 'Feedbacks.document_type_code',
-      description: 'Classification document type code (e.g., FBK, CPT, CPM, CTU)',
+      id: 'territory_group',
+      member: 'SalesTerritories.territory_group',
+      description: 'Geographical territory group or region (e.g., North America, Europe, Pacific)',
       type: 'string'
     },
     {
-      id: 'user_plan_tier',
-      member: 'Users.user_plan_tier',
-      description: 'User or customer account tier or category (e.g., Staff, User)',
+      id: 'territory_name',
+      member: 'SalesTerritories.name',
+      description: 'Specific sales territory name (e.g., Northwest, Southwest, United Kingdom, France)',
       type: 'string'
     },
     {
-      id: 'customer__region',
-      member: 'Customers.region',
-      description: 'Geographical customer region (e.g., EMEA, APAC, NA)',
+      id: 'country_code',
+      member: 'SalesTerritories.country_code',
+      description: 'Country code of territory (e.g., US, CA, FR, DE, AU, GB)',
       type: 'string'
     },
     {
-      id: 'video_title',
-      member: 'Videos.title',
-      description: 'Title or name of the video',
+      id: 'product_color',
+      member: 'Products.color',
+      description: 'Color of the product (e.g., Black, Red, Silver, Yellow, Blue)',
       type: 'string'
     },
     {
-      id: 'is_active',
-      member: 'Videos.is_active',
-      description: 'Active status boolean flag',
+      id: 'is_online_order',
+      member: 'SalesOrders.is_online_order',
+      description: 'Flag indicating if the order was placed online or offline',
       type: 'boolean'
     }
   ],
   timeDimensions: [
     {
       id: 'order_date',
-      member: 'Orders.createdAt',
-      description: 'Timestamp when the order was created'
-    },
-    {
-      id: 'created_on',
-      member: 'Feedbacks.created_on',
-      description: 'Timestamp when the feedback or inquiry was submitted'
+      member: 'SalesOrders.order_date',
+      description: 'Timestamp or date when the sales order was created'
     }
   ]
 };

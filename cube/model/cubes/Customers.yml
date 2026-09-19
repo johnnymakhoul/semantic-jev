@@ -1,0 +1,17 @@
+cubes:
+  - name: Customers
+    sql_table: '"Sales"."Customer"'
+
+    measures:
+      - name: count
+        type: count
+
+    dimensions:
+      - name: CustomerID
+        sql: '{CUBE}."CustomerID"'
+        type: number
+        primary_key: true
+
+      - name: account_number
+        sql: '{CUBE}."AccountNumber"'
+        type: string

@@ -1,0 +1,58 @@
+cubes:
+  - name: SalesOrders
+    sql_table: '"Sales"."SalesOrderHeader"'
+
+    joins:
+      - name: SalesTerritories
+        relationship: many_to_one
+        sql: '{CUBE}."TerritoryID" = {SalesTerritories}."TerritoryID"'
+
+      - name: Customers
+        relationship: many_to_one
+        sql: '{CUBE}."CustomerID" = {Customers}."CustomerID"'
+
+    measures:
+      - name: count
+        type: count
+
+      - name: total_sales
+        sql: 'COALESCE({CUBE}."TotalDue", {CUBE}."SubTotal" + {CUBE}."TaxAmt" + {CUBE}."Freight")'
+        type: sum
+
+      - name: subtotal
+        sql: '{CUBE}."SubTotal"'
+        type: sum
+
+      - name: tax_amount
+        sql: '{CUBE}."TaxAmt"'
+        type: sum
+
+      - name: freight_amount
+        sql: '{CUBE}."Freight"'
+        type: sum
+
+      - name: avg_order_value
+        sql: 'COALESCE({CUBE}."TotalDue", {CUBE}."SubTotal" + {CUBE}."TaxAmt" + {CUBE}."Freight")'
+        type: avg
+
+    dimensions:
+      - name: id
+        sql: '{CUBE}."SalesOrderID"'
+        type: number
+        primary_key: true
+
+      - name: order_number
+        sql: '{CUBE}."SalesOrderNumber"'
+        type: string
+
+      - name: status
+        sql: '{CUBE}."Status"'
+        type: number
+
+      - name: is_online_order
+        sql: '{CUBE}."OnlineOrderFlag"'
+        type: boolean
+
+      - name: order_date
+        sql: '{CUBE}."OrderDate"'
+        type: time

@@ -1,630 +1,326 @@
-## Project Description
+# semantic-jev
 
-**Jev Universal Semantic Bridge (`semantic-jev`)** is an extensible orchestration microservice and CLI tool that converts natural language business inquiries into certified metric queries executed against any semantic layer. It uses **Jev** as a calibrated intent and entity classification engine and implements a pluggable **Semantic Adapter Interface**.
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue.svg)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg)](https://nodejs.org/)
+[![TypeSafe](https://img.shields.io/badge/Powered%20By-TypeSafe%20AI-orange.svg)](https://typesafe.ai)
+[![Cube](https://img.shields.io/badge/Semantic%20Layer-Cube-purple.svg)](https://cube.dev/)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791.svg)](https://www.postgresql.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Rather than permitting unconstrained LLMs to generate arbitrary, hallucination-prone SQL, the bridge binds unstructured questions to a bounded canonical semantic model. The engine validates classification confidence, applies threshold safeguards, resolves tenant security contexts, and delegates execution to provider-specific adapters. It includes production-ready adapters for **Cube** (REST JSON query API) and the **dbt Semantic Layer** (MetricFlow GraphQL/REST API), with an open interface to plug in systems like Snowflake Cortex Analyst, Looker, or AtScale.
+**Universal Natural Language to Semantic Layer Bridge powered by Jev (TypeSafe System One).**
 
----
-
-## Goals & Non-Goals
-
-### Goals
-
-* **Pluggable Semantic Layer Architecture:** Provide a unified `SemanticAdapter` contract that abstracts away provider-specific querying formats (Cube REST vs. dbt GraphQL vs. custom engines).
-* **Out-of-the-Box Provider Support:** Deliver turnkey implementations for **Cube** and **dbt Semantic Layer (MetricFlow)**.
-* **Calibrated Intent Routing & Extraction:** Use Jev to classify user input into typed analytical parameters: target metrics/measures, group-by dimensions, time grains, and categorical filters.
-* **Deterministic Confidence Gating:** Enforce automated tiered execution:
-* Confidence $\ge 0.85$: Immediate certified execution.
-* Confidence $0.60 - 0.84$: Disambiguation/confirmation loop.
-* Confidence $< 0.60$: Deterministic rejection before database resources are touched.
-
-
-* **Multi-Tenant Context Propagation:** Inject runtime tenancy, security roles, and user identifiers into downstream semantic layer calls to preserve Row-Level Security (RLS).
-
-### Non-Goals
-
-* **Freeform SQL / DDL / DML Generation:** The bridge will never author raw SQL strings or execute direct database migrations.
-* **Semantic Catalog Authoring:** The bridge reads semantic models; it does not author or edit Cube YAML/JS or dbt `semantic_models.yml` files.
-* **Data Visualization & Front-End Rendering:** The system delivers structured, tabular analytical data payloads; graph plotting or BI rendering is delegated to UI clients.
-* **Jev Model Fine-Tuning:** The tool acts as an inference consumer of Jev predictions; training or weight updates are outside this scope.
+Convert unstructured user inquiries into certified, governed metric queries executed safely against any semantic layer—with **calibrated confidence gating**, **zero SQL hallucinations**, and **real-time latency tracking**.
 
 ---
 
-## Requirements
+## Why `semantic-jev`?
 
-### Functional Requirements
+Unconstrained LLM Text-to-SQL approaches are notoriously brittle in production:
+* **Hallucinated joins and columns** that corrupt financial or business metrics.
+* **Schema drift & performance risks**, generating runaway Cartesian product queries.
+* **Bypassed access controls**, ignoring row-level and role-based security policies.
 
-1. **Catalog Synchronization:** Adapters must expose or accept canonical metric definitions (measures, dimensions, grains) to keep Jev classification targets synchronized.
-2. **Intent Parsing via Jev:** Ingest natural language prompts and output structured classifications matching the canonical schema.
-3. **Threshold Gatekeeper:** Evaluate prediction confidence against strict, configurable boundaries (`EXECUTION_THRESHOLD` and `AMBIGUITY_THRESHOLD`).
-4. **Canonical-to-Provider Query Translation:**
-* **Cube:** Translate canonical parameters to Cube’s JSON payload (`measures`, `dimensions`, `filters`, `timeDimensions`).
-* **dbt Semantic Layer:** Translate canonical parameters to MetricFlow’s query model (`metrics`, `groupBy`, `where`).
-
-
-5. **Execution & Format Standardization:** Dispatch queries to the configured target adapter and return a unified record set: `{ columns: string[], rows: Record<string, any>[] }`.
-
-### Non-Functional Requirements
-
-* **Provider Extensibility:** Adding a new semantic layer (e.g., Looker, Snowflake Cortex) must only require implementing one TypeScript class (`SemanticAdapter`) without altering the core pipeline.
-* **Latency Overhead:** Bridge orchestration latency must remain $< 100\text{ ms}$ (exclusive of external network/database compute).
-* **Runtime Verification:** Strict data contracts enforced at runtime using `Zod` schemas.
-
----
-
-## Technical Solution
-
-### Pluggable Architecture
+`semantic-jev` solves this by routing natural language through a **governed semantic model**:
 
 ```text
-                               +-----------------------------+
-                               |     Natural Language Input  |
-                               +-----------------------------+
-                                              |
-                                              v
-+-------------------------------------------------------------------------------------------+
-| Jev Universal Semantic Bridge                                                             |
-|                                                                                           |
-|  +------------------------+      +-----------------------+     +-----------------------+  |
-|  |     Jev Classifier     | ---> |   Confidence Guard    | --->| Canonical Query Model |  |
-|  | (Intent & Entity Slot) |      | (Threshold Evaluation)|     |  (Measures/Dims/Date) |  |
-|  +------------------------+      +-----------------------+     +-----------------------+  |
-+----------------------------------------------------------------------------|--------------+
-                                                                             |
-                                        +------------------------------------+
-                                        | (Select Provider Adapter)
-                                        v
-                 +---------------------------------------------+
-                 |            <<SemanticAdapter>>              |
-                 +---------------------------------------------+
-                        |                               |
-          +-------------+-------------+   +-------------+-------------+
-          |   CubeSemanticAdapter     |   |    DbtSemanticAdapter     |
-          |  (REST JSON Query Engine) |   | (MetricFlow GraphQL/REST) |
-          +---------------------------+   +---------------------------+
-                        |                               |
-                        v                               v
-             +--------------------+          +--------------------+
-             |  Cube API Server   |          | dbt Cloud / Engine |
-             | (CubeStore / RLS)  |          | (MetricFlow / SQL) |
-             +--------------------+          +--------------------+
-                        |                               |
-                        +---------------+---------------+
-                                        |
-                                        v
-                          +---------------------------+
-                          |  Data Warehouse / RDBMS   |
-                          | (Snowflake/BigQuery/Postg)|
-                          +---------------------------+
-
+                           +---------------------------+
+                           |  Natural Language Prompt  |
+                           +---------------------------+
+                                         │
+                                         ▼
+                           +---------------------------+
+                           |   Jev System One Engine   |
+                           | (Intent & Slot Extraction)|
+                           +---------------------------+
+                                         │
+                                         ▼
+                     +───────────────────────────────────────+
+                     │     Deterministic Confidence Gate     │
+                     +───────────────────────────────────────+
+                     │  ≥ 0.85 ──► Direct Execution          │
+                     │  0.60–0.84 ► Disambiguation Loop      │
+                     │  < 0.60 ──► Safe Deterministic Reject │
+                     +───────────────────────────────────────+
+                                         │
+                                         ▼
+                           +---------------------------+
+                           |   Canonical Query Model   |
+                           |   (Measures, Dims, Dates) |
+                           +---------------------------+
+                                         │
+                    ┌────────────────────┴────────────────────┐
+                    ▼                                         ▼
+     +─────────────────────────────+           +─────────────────────────────+
+     │     CubeSemanticAdapter     │           │     DbtSemanticAdapter      │
+     │      (Cube REST API)        │           │  (MetricFlow GraphQL/REST)  │
+     +─────────────────────────────+           +─────────────────────────────+
+                    │                                         │
+                    ▼                                         ▼
+        [Cube Semantic Engine]                     [dbt MetricFlow Engine]
+                    │                                         │
+                    └────────────────────┬────────────────────┘
+                                         ▼
+                           +---------------------------+
+                           | PostgreSQL / Data Lake    |
+                           |     (AdventureWorks)      |
+                           +---------------------------+
 ```
-
-### Core Design Pattern: Strategy Adapter
-
-The system uses the **Strategy Pattern**. A central `BridgeService` coordinates classification and decision gating. It then hands off a normalized `CanonicalQuery` to whatever `SemanticAdapter` is injected at boot time (e.g., `CubeSemanticAdapter`, `DbtSemanticAdapter`, or any custom engine).
 
 ---
 
-## Use Case Diagram
+## Key Features
+
+- **Zero SQL Hallucination:** Translates intent strictly into bounded measures, dimensions, and filters defined by your data catalog.
+- **Calibrated Confidence Gating:**
+  - **High Confidence ($\ge 0.85$):** Immediate certified query execution.
+  - **Medium Confidence ($0.60 - 0.84$):** Interactive disambiguation/confirmation before touching warehouse compute.
+  - **Low Confidence ($< 0.60$):** Instant rejection with actionable feedback.
+- **Pluggable Semantic Adapter Architecture:** Unified interface with out-of-the-box adapters for **Cube** and **dbt Semantic Layer (MetricFlow)**, and extensible to Looker or Snowflake Cortex.
+- **⏱ Real-Time Latency Breakdown:** Tracks analysis time, semantic engine execution time, and total round-trip latency.
+- **🐳 Turnkey Sample Environment:** Includes Docker Compose configuration with **PostgreSQL + AdventureWorks** and pre-compiled Cube data models.
+- **🔒 Multi-Tenant Context Propagation:** Injects `tenantId`, `userId`, and `role` into every downstream semantic request to enforce Row-Level Security (RLS).
+- **📋 Dynamic Data Catalog:** Auto-introspects Cube metadata or loads custom measures/dimensions from [`catalog.json`](file:///Users/johnnym/code/semantic-jev/catalog.json).
+
+---
+
+## Quickstart
+
+### Prerequisites
+
+* [Node.js](https://nodejs.org/) (v18 or higher)
+* [Docker & Docker Compose](https://docs.docker.com/compose/)
+
+### 1. Installation
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/your-username/semantic-jev.git
+cd semantic-jev
+npm install
+```
+
+### 2. Environment Setup
+
+Create a `.env` file from `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+Configure your environment variables:
+
+```ini
+# TypeSafe / Jev API Credentials
+JEV_API_KEY=your_jev_api_key_here
+JEV_API_URL=https://api.typesafe.ai
+
+# Semantic Layer Providers
+CUBEJS_API_URL=http://localhost:4000
+CUBEJS_API_TOKEN=your_cube_api_token
+
+# Optional: dbt Semantic Layer (MetricFlow)
+DBT_ENVIRONMENT_ID=your_dbt_env_id
+DBT_SERVICE_TOKEN=your_dbt_service_token
+```
+
+### 3. Start the AdventureWorks + Cube Environment
+
+Launch the bundled PostgreSQL database and Cube semantic layer:
+
+```bash
+docker compose up -d
+```
+
+Verify services:
+* **PostgreSQL (AdventureWorks)**: `localhost:5432` (`postgres:postgres`, DB: `postgres`)
+* **Cube API Server & Playground**: [http://localhost:4000](http://localhost:4000)
+
+---
+
+## 💻 CLI Usage
+
+`semantic-jev` comes with an interactive REPL and a one-shot CLI.
+
+### One-Shot Queries
+
+Ask questions directly from your terminal:
+
+```bash
+# Auto-confirm and execute:
+npm run cli -- -y "What is the total sales by territory group?"
+
+# Product breakdown:
+npm run cli -- -y "How many products do we have by color?"
+
+# Output raw JSON with timing metrics:
+npm run cli -- --json -y "What is our total sales?"
+```
+
+**Example Output:**
+```text
+Analyzing prompt: "What is the total sales by territory group?"...
+? [DISAMBIGUATION REQUIRED] Confidence: 0.73 | Analysis time: 940ms
+I inferred metric(s): [total_sales] grouped by [territory_group]. Please confirm to execute.
+Proposed Canonical Query: {
+  "metrics": [
+    "total_sales"
+  ],
+  "dimensions": [
+    "territory_group"
+  ],
+  "timeDimensions": [],
+  "filters": []
+}
+ℹ Auto-confirming execution (--yes flag active)...
+Executing confirmed query against Cube...
+✔ Execution completed in 56ms! (Total round-trip: 996ms) Rows returned (3):
+┌─────────┬──────────────────────────────────┬─────────────────────────┐
+│ (index) │ SalesTerritories.territory_group │ SalesOrders.total_sales │
+├─────────┼──────────────────────────────────┼─────────────────────────┤
+│ 0       │ 'North America'                  │ '89228792.3910'         │
+│ 1       │ 'Europe'                         │ '22173617.6297'         │
+│ 2       │ 'Pacific'                        │ '11814376.0952'         │
+└─────────┴──────────────────────────────────┴─────────────────────────┘
+```
+
+### Interactive REPL
+
+Start the interactive session:
+
+```bash
+npm run cli
+```
+
+Available REPL commands:
+* `/catalog` - Inspect all active measures and dimensions.
+* `/sync` - Dynamically synchronize the catalog by introspecting the live Cube schema.
+* `/provider <cube|dbt>` - Switch the active semantic layer on the fly.
+* `/help` - Show CLI command options.
+* `/exit` - Exit the CLI.
+
+---
+
+## 🛠 Project Architecture
 
 ```text
-                  Use Case Diagram: Jev Universal Semantic Bridge
-                 =================================================
-
-                +------------------------------------------------------+
-                | System Boundary: Jev-Semantic-Bridge                 |
-                |                                                      |
-                |                  (Submit Prompt)                     |
-                |                         ^                            |
-                |                         |                            |
-                |               +---------+---------+                  |
-                |               |                   |                  |
-                |          <<include>>         <<include>>             |
-                |               |                   |                  |
-                |               v                   v                  |
-                |       (Classify Intent)   (Evaluate Confidence)      |
-                |               ^                   |                  |
-                |               |              <<extend>>              |
-                |               |                   |                  |
-                |               |                   v                  |
-(Client/Agent) -+               |         (Prompt Disambiguation)      |
-      |                         |                                      |
-      |                         |                                      |
-      |                         +-------------------+                  |
-      |                         |                   |                  |
-      |                    <<include>>         <<include>>             |
-      |                         |                   |                  |
-      |                         v                   v                  |
-      +-----------------> (Receive Data)    (Translate to Provider)    |
-                                                    |                  |
-                                            +-------+-------+          |
-                                            |               |          |
-                                       <<delegate>>   <<delegate>>     |
-                                            |               |          |
-                +---------------------------|---------------|----------+
-                                            |               |
-                                            v               v
-                                     (Cube Adapter)   (dbt Adapter)
-                                            |               |
-                                            v               v
-                                     [Cube Semantic]  [dbt Semantic]
-
+semantic-jev/
+├── catalog.json              # Active semantic catalog (measures, dimensions, timeDimensions)
+├── docker-compose.yml        # PostgreSQL (AdventureWorks) + Cube container stack
+├── cube/
+│   └── model/cubes/          # Cube semantic data models
+│       ├── SalesOrders.yml
+│       ├── SalesTerritories.yml
+│       ├── Products.yml
+│       └── Customers.yml
+├── src/
+│   ├── index.ts              # Library entry point & multi-provider demonstration
+│   ├── cli.ts                # Interactive CLI & REPL engine
+│   ├── types.ts              # Zod schemas & canonical query interfaces
+│   ├── catalog.ts            # Dynamic catalog loader & Cube metadata converter
+│   ├── bridgeService.ts      # Core orchestration & confidence gating service
+│   ├── jevClient.ts          # TypeSafe System One (Jev) inference client
+│   └── adapters/
+│       ├── base.ts           # SemanticAdapter interface contract
+│       ├── cubeAdapter.ts    # Production Cube REST API adapter
+│       └── dbtAdapter.ts     # dbt MetricFlow GraphQL/REST adapter
+└── test/
+    └── bridge.test.ts        # Automated integration test suite
 ```
 
 ---
 
-## Implementation
+## 📖 Programmatic API Usage
 
-The complete codebase below is structured as a typed, production-ready module in TypeScript.
-
-### 1. `package.json`
-
-```json
-{
-  "name": "semantic-jev",
-  "version": "2.0.0",
-  "description": "Universal semantic layer integration bridge powered by Jev",
-  "main": "dist/index.js",
-  "scripts": {
-    "start": "ts-node src/index.ts",
-    "build": "tsc"
-  },
-  "dependencies": {
-    "axios": "^1.7.0",
-    "dotenv": "^16.4.5",
-    "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "@types/node": "^20.14.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
-  }
-}
-
-```
-
-### 2. `src/types.ts` (Canonical Contracts)
+Use `semantic-jev` as a microservice library within your backend:
 
 ```typescript
-import { z } from 'zod';
+import {
+  BridgeService,
+  JevClient,
+  CubeSemanticAdapter,
+  loadCatalogFromFile,
+  ExecutionContext
+} from 'semantic-jev';
 
-export const FilterOperatorSchema = z.enum([
-  'equals',
-  'notEquals',
-  'contains',
-  'notContains',
-  'gt',
-  'gte',
-  'lt',
-  'lte'
-]);
+// 1. Initialize components
+const catalog = loadCatalogFromFile('./catalog.json');
+const jev = new JevClient(process.env.JEV_API_URL, process.env.JEV_API_KEY, catalog);
+const adapter = new CubeSemanticAdapter(process.env.CUBEJS_API_URL, process.env.CUBEJS_API_TOKEN, catalog);
+const bridge = new BridgeService(jev, adapter);
 
-export const CanonicalFilterSchema = z.object({
-  field: z.string(),
-  operator: FilterOperatorSchema,
-  values: z.array(z.string())
-});
+// 2. Define user security context
+const context: ExecutionContext = {
+  tenantId: 'tenant_enterprise_01',
+  userId: 'analyst_42',
+  role: 'data_consumer'
+};
 
-export const CanonicalTimeDimensionSchema = z.object({
-  field: z.string(),
-  granularity: z.enum(['day', 'week', 'month', 'quarter', 'year']),
-  dateRange: z.string()
-});
+// 3. Process natural language query
+const result = await bridge.processQuery('What is the total sales by territory group?', context);
 
-export const CanonicalQuerySchema = z.object({
-  metrics: z.array(z.string()),
-  dimensions: z.array(z.string()).default([]),
-  filters: z.array(CanonicalFilterSchema).default([]),
-  timeDimensions: z.array(CanonicalTimeDimensionSchema).default([]),
-  limit: z.number().optional()
-});
-
-export type CanonicalQuery = z.infer<typeof CanonicalQuerySchema>;
-export type CanonicalFilter = z.infer<typeof CanonicalFilterSchema>;
-export type CanonicalTimeDimension = z.infer<typeof CanonicalTimeDimensionSchema>;
-
-export interface ExecutionContext {
-  tenantId: string;
-  userId: string;
-  role: string;
+if (result.status === 'SUCCESS') {
+  console.log('Query executed successfully:', result.data.rows);
+} else if (result.status === 'DISAMBIGUATION_REQUIRED') {
+  console.log(`Requires confirmation (${result.confidence}):`, result.message);
+  // Re-submit result.proposedQuery after user confirms:
+  const data = await adapter.execute(result.proposedQuery, context);
+  console.log('Executed confirmed query:', data.rows);
+} else {
+  console.log('Query rejected safely:', result.reason);
 }
-
-export interface StandardResultRow {
-  [key: string]: any;
-}
-
-export interface StandardExecutionResult {
-  provider: string;
-  columns: string[];
-  rows: StandardResultRow[];
-}
-
-export type BridgeExecutionResult =
-  | { status: 'SUCCESS'; data: StandardExecutionResult; query: CanonicalQuery }
-  | { status: 'DISAMBIGUATION_REQUIRED'; confidence: number; proposedQuery: CanonicalQuery; message: string }
-  | { status: 'REJECTED'; confidence: number; reason: string };
-
 ```
 
-### 3. `src/adapters/base.ts` (Universal Adapter Interface)
+---
+
+## Extending with Custom Semantic Adapters
+
+To connect an additional semantic layer (e.g. **Looker**, **Snowflake Cortex Analyst**, **AtScale**), simply implement the `SemanticAdapter` interface:
 
 ```typescript
-import { CanonicalQuery, ExecutionContext, StandardExecutionResult } from '../types';
-
-/**
- * Universal interface for connecting any semantic layer.
- */
-export interface SemanticAdapter {
-  readonly providerName: string;
-
-  /**
-   * Translates canonical metrics and dimensions into provider-specific queries and executes them.
-   */
-  execute(query: CanonicalQuery, context: ExecutionContext): Promise<StandardExecutionResult>;
-}
-
-```
-
-### 4. `src/adapters/cubeAdapter.ts` (Cube Support)
-
-Maps canonical queries to Cube's JSON `/load` format.
-
-```typescript
-import axios from 'axios';
-import { SemanticAdapter } from './base';
-import { CanonicalQuery, ExecutionContext, StandardExecutionResult } from '../types';
-
-export class CubeSemanticAdapter implements SemanticAdapter {
-  readonly providerName = 'Cube';
-  private apiUrl: string;
-  private apiToken: string;
-
-  constructor(apiUrl = process.env.CUBEJS_API_URL, apiToken = process.env.CUBEJS_API_TOKEN || 'token') {
-    this.apiUrl = (apiUrl || 'http://localhost:4000').replace(/\/$/, '');
-    this.apiToken = apiToken;
-  }
-
-  public async execute(query: CanonicalQuery, context: ExecutionContext): Promise<StandardExecutionResult> {
-    // Translate CanonicalQuery to Cube REST JSON format
-    const cubeQuery = {
-      measures: query.metrics,
-      dimensions: query.dimensions,
-      filters: query.filters.map(f => ({
-        member: f.field,
-        operator: f.operator,
-        values: f.values
-      })),
-      timeDimensions: query.timeDimensions.map(t => ({
-        dimension: t.field,
-        granularity: t.granularity,
-        dateRange: t.dateRange
-      })),
-      limit: query.limit
-    };
-
-    if (!process.env.CUBEJS_API_URL) {
-      // Mock execution if running standalone
-      return {
-        provider: this.providerName,
-        columns: [...query.dimensions, ...query.metrics],
-        rows: [
-          { 'Customers.region': 'EMEA', 'Orders.createdAt.month': '2026-08', 'Orders.totalAmount': 415000 },
-          { 'Customers.region': 'EMEA', 'Orders.createdAt.month': '2026-09', 'Orders.totalAmount': 472000 }
-        ]
-      };
-    }
-
-    const response = await axios.post(
-      `${this.apiUrl}/cubejs-api/v1/load`,
-      { query: cubeQuery },
-      {
-        headers: {
-          'Authorization': this.apiToken,
-          'Content-Type': 'application/json',
-          'x-tenant-id': context.tenantId,
-          'x-user-role': context.role
-        }
-      }
-    );
-
-    const rows = response.data?.data || [];
-    const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
-    return { provider: this.providerName, columns, rows };
-  }
-}
-
-```
-
-### 5. `src/adapters/dbtAdapter.ts` (dbt Semantic Layer Support)
-
-Maps canonical queries to dbt Semantic Layer (MetricFlow) GraphQL queries.
-
-```typescript
-import axios from 'axios';
-import { SemanticAdapter } from './base';
-import { CanonicalQuery, ExecutionContext, StandardExecutionResult } from '../types';
-
-export class DbtSemanticAdapter implements SemanticAdapter {
-  readonly providerName = 'dbt-MetricFlow';
-  private apiUrl: string;
-  private serviceToken: string;
-  private environmentId: string;
-
-  constructor(
-    apiUrl = process.env.DBT_SL_URL || 'https://semantic-layer.cloud.getdbt.com/api/graphql',
-    serviceToken = process.env.DBT_SL_TOKEN || 'token',
-    environmentId = process.env.DBT_ENVIRONMENT_ID || '1000'
-  ) {
-    this.apiUrl = apiUrl;
-    this.serviceToken = serviceToken;
-    this.environmentId = environmentId;
-  }
-
-  public async execute(query: CanonicalQuery, context: ExecutionContext): Promise<StandardExecutionResult> {
-    // Construct MetricFlow GraphQL query structure
-    const groupByList = [
-      ...query.dimensions,
-      ...query.timeDimensions.map(t => `${t.field}__${t.granularity}`)
-    ];
-
-    const whereClauses = query.filters.map(f => {
-      const val = f.values.map(v => `'${v}'`).join(', ');
-      return `{{ Dimension('${f.field}') }} = ${val}`;
-    });
-
-    if (!process.env.DBT_SL_URL) {
-      // Mock execution if running standalone
-      return {
-        provider: this.providerName,
-        columns: [...groupByList, ...query.metrics],
-        rows: [
-          { 'customer__region': 'EMEA', 'order_date__month': '2026-08-01', 'total_revenue': 510000 },
-          { 'customer__region': 'EMEA', 'order_date__month': '2026-09-01', 'total_revenue': 540000 }
-        ]
-      };
-    }
-
-    const gqlQuery = `
-      mutation CreateQuery {
-        createQuery(
-          environmentId: ${this.environmentId}
-          metrics: [${query.metrics.map(m => `"${m}"`).join(', ')}]
-          groupBy: [${groupByList.map(g => `"${g}"`).join(', ')}]
-          where: ${whereClauses.length > 0 ? `"${whereClauses.join(' AND ')}"` : 'null'}
-        ) {
-          queryId
-        }
-      }
-    `;
-
-    const response = await axios.post(
-      this.apiUrl,
-      { query: gqlQuery },
-      {
-        headers: {
-          'Authorization': `Bearer ${this.serviceToken}`,
-          'Content-Type': 'application/json',
-          'X-Tenant-Id': context.tenantId
-        }
-      }
-    );
-
-    // In production, poll queryId status until completed, then return results
-    const rawData = response.data?.data?.results || [];
-    return {
-      provider: this.providerName,
-      columns: rawData.length > 0 ? Object.keys(rawData[0]) : [],
-      rows: rawData
-    };
-  }
-}
-
-```
-
-### 6. `src/jevClient.ts`
-
-```typescript
-import { CanonicalQuery } from './types';
-
-export interface JevInference {
-  intent: string;
-  confidence: number;
-  extractedQuery: CanonicalQuery;
-}
-
-export class JevClient {
-  private apiUrl: string;
-  private apiKey: string;
-
-  constructor(apiUrl = process.env.JEV_API_URL || 'https://api.jev.ai', apiKey = process.env.JEV_API_KEY || 'mock') {
-    this.apiUrl = apiUrl;
-    this.apiKey = apiKey;
-  }
-
-  public async classify(prompt: string): Promise<JevInference> {
-    const normalized = prompt.toLowerCase();
-
-    // Deterministic simulation matching classification behavior
-    if (normalized.includes('revenue') || normalized.includes('sales')) {
-      return {
-        intent: 'query_metric',
-        confidence: 0.95,
-        extractedQuery: {
-          metrics: ['total_revenue'],
-          dimensions: ['customer__region'],
-          timeDimensions: [
-            {
-              field: 'order_date',
-              granularity: 'month',
-              dateRange: 'This year'
-            }
-          ],
-          filters: normalized.includes('emea')
-            ? [{ field: 'customer__region', operator: 'equals', values: ['EMEA'] }]
-            : []
-        }
-      };
-    }
-
-    if (normalized.includes('users') || normalized.includes('customers')) {
-      return {
-        intent: 'query_metric',
-        confidence: 0.73, // Intermediate confidence -> prompts disambiguation
-        extractedQuery: {
-          metrics: ['active_users_count'],
-          dimensions: ['user_plan_tier'],
-          timeDimensions: [],
-          filters: []
-        }
-      };
-    }
-
-    return {
-      intent: 'unsupported',
-      confidence: 0.32, // Low confidence -> rejection
-      extractedQuery: { metrics: [], dimensions: [], filters: [], timeDimensions: [] }
-    };
-  }
-}
-
-```
-
-### 7. `src/bridgeService.ts`
-
-```typescript
-import { JevClient } from './jevClient';
 import { SemanticAdapter } from './adapters/base';
-import { ExecutionContext, BridgeExecutionResult } from './types';
+import { CanonicalQuery, ExecutionContext, StandardExecutionResult } from './types';
 
-export class BridgeService {
-  private jevClient: JevClient;
-  private adapter: SemanticAdapter;
-
-  private readonly EXECUTION_THRESHOLD = 0.85;
-  private readonly AMBIGUITY_THRESHOLD = 0.60;
-
-  constructor(jevClient: JevClient, adapter: SemanticAdapter) {
-    this.jevClient = jevClient;
-    this.adapter = adapter;
-  }
-
-  /**
-   * Allows dynamically switching semantic layer targets (Cube, dbt, Looker, etc.)
-   */
-  public setAdapter(adapter: SemanticAdapter): void {
-    this.adapter = adapter;
-  }
-
-  public async processQuery(userPrompt: string, context: ExecutionContext): Promise<BridgeExecutionResult> {
-    const inference = await this.jevClient.classify(userPrompt);
-    const query = inference.extractedQuery;
-
-    // Gate 1: High Confidence -> Immediate Execution
-    if (inference.confidence >= this.EXECUTION_THRESHOLD) {
-      const data = await this.adapter.execute(query, context);
-      return { status: 'SUCCESS', data, query };
-    }
-
-    // Gate 2: Medium Confidence -> Request Disambiguation
-    if (inference.confidence >= this.AMBIGUITY_THRESHOLD) {
-      return {
-        status: 'DISAMBIGUATION_REQUIRED',
-        confidence: inference.confidence,
-        proposedQuery: query,
-        message: `I inferred metric(s): [${query.metrics.join(', ')}] grouped by [${query.dimensions.join(', ')}]. Please confirm to execute.`
-      };
-    }
-
-    // Gate 3: Low Confidence -> Reject
-    return {
-      status: 'REJECTED',
-      confidence: inference.confidence,
-      reason: 'The intent could not be mapped to governed metrics. Please rephrase your question.'
-    };
-  }
-}
-
-```
-
-### 8. `src/index.ts` (Multi-Provider Demo)
-
-Demonstrates executing queries across both **Cube** and **dbt** with the same classification pipeline.
-
-```typescript
-import { JevClient } from './jevClient';
-import { CubeSemanticAdapter } from './adapters/cubeAdapter';
-import { DbtSemanticAdapter } from './adapters/dbtAdapter';
-import { BridgeService } from './bridgeService';
-import { ExecutionContext } from './types';
-
-async function main() {
-  const jev = new JevClient();
-  const cubeAdapter = new CubeSemanticAdapter();
-  const dbtAdapter = new DbtSemanticAdapter();
-
-  const bridge = new BridgeService(jev, cubeAdapter);
-
-  const context: ExecutionContext = {
-    tenantId: 'tenant_enterprise_01',
-    userId: 'analyst_42',
-    role: 'data_consumer'
-  };
-
-  const testPrompts = [
-    'What was our monthly revenue in EMEA this year?',
-    'Show me active customers by tier',
-    'What is the stock forecast for tomorrow?'
-  ];
-
-  console.log('===============================================================');
-  console.log('1. RUNNING WITH CUBE SEMANTIC LAYER');
-  console.log('===============================================================');
-
-  for (const prompt of testPrompts) {
-    console.log(`\nPrompt: "${prompt}"`);
-    const result = await bridge.processQuery(prompt, context);
-
-    if (result.status === 'SUCCESS') {
-      console.log(`[${result.data.provider}] Success! Rows returned:`, result.data.rows);
-    } else if (result.status === 'DISAMBIGUATION_REQUIRED') {
-      console.log(`[Disambiguation Required] Confidence: ${result.confidence} -> ${result.message}`);
-    } else {
-      console.log(`[Rejected] Confidence: ${result.confidence} -> ${result.reason}`);
-    }
-  }
-
-  console.log('\n===============================================================');
-  console.log('2. SWITCHING TO DBT SEMANTIC LAYER (METRICFLOW)');
-  console.log('===============================================================');
-
-  bridge.setAdapter(dbtAdapter);
-
-  const dbtResult = await bridge.processQuery('What was our monthly revenue in EMEA this year?', context);
-  if (dbtResult.status === 'SUCCESS') {
-    console.log(`[${dbtResult.data.provider}] Success! Rows returned:`, dbtResult.data.rows);
-  }
-}
-
-main().catch(console.error);
-
-```
-
----
-
-### Verifying Extensibility: Adding Any Third Layer
-
-To connect an additional semantic layer (e.g., **Snowflake Cortex Analyst** or **Looker**), implement the `SemanticAdapter` interface without modifying the Jev pipeline:
-
-```typescript
 export class LookerSemanticAdapter implements SemanticAdapter {
   readonly providerName = 'Looker';
 
   async execute(query: CanonicalQuery, context: ExecutionContext): Promise<StandardExecutionResult> {
-    // 1. Map canonical fields to LookML explore fields (e.g., 'orders.total_revenue')
+    // 1. Translate canonical measures/dimensions to LookML explore fields
     // 2. Dispatch to Looker REST API: POST /api/4.0/queries/run/json
-    // 3. Return StandardExecutionResult
-    return { provider: this.providerName, columns: [], rows: [] };
+    // 3. Return standardized result
+    return {
+      provider: this.providerName,
+      columns: ['region', 'total_sales'],
+      rows: []
+    };
   }
 }
-
 ```
+
+Switch adapters at runtime with:
+
+```typescript
+bridge.setAdapter(new LookerSemanticAdapter());
+```
+
+---
+
+## Testing
+
+Run the automated integration test suite:
+
+```bash
+npm test
+```
+
+Run the multi-provider demo:
+
+```bash
+npm start
+```
+
+---
+
+## License
+
+This project is licensed under the [MIT License](file:///Users/johnnym/code/semantic-jev/LICENSE).
