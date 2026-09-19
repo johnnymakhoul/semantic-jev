@@ -76,10 +76,10 @@ Unconstrained LLM Text-to-SQL approaches are notoriously brittle in production:
   - **Medium Confidence ($0.60 - 0.84$):** Interactive disambiguation/confirmation before touching warehouse compute.
   - **Low Confidence ($< 0.60$):** Instant rejection with actionable feedback.
 - **Pluggable Semantic Adapter Architecture:** Unified interface with out-of-the-box adapters for **Cube** and **dbt Semantic Layer (MetricFlow)**, and extensible to Looker or Snowflake Cortex.
-- **⏱ Real-Time Latency Breakdown:** Tracks analysis time, semantic engine execution time, and total round-trip latency.
-- **🐳 Turnkey Sample Environment:** Includes Docker Compose configuration with **PostgreSQL + AdventureWorks** and pre-compiled Cube data models.
-- **🔒 Multi-Tenant Context Propagation:** Injects `tenantId`, `userId`, and `role` into every downstream semantic request to enforce Row-Level Security (RLS).
-- **📋 Dynamic Data Catalog:** Auto-introspects Cube metadata or loads custom measures/dimensions from [`catalog.json`](file:///Users/johnnym/code/semantic-jev/catalog.json).
+- **Real-Time Latency Breakdown:** Tracks analysis time, semantic engine execution time, and total round-trip latency.
+- **Turnkey Sample Environment:** Includes Docker Compose configuration with **PostgreSQL + AdventureWorks** and pre-compiled Cube data models.
+- **Multi-Tenant Context Propagation:** Injects `tenantId`, `userId`, and `role` into every downstream semantic request to enforce Row-Level Security (RLS).
+- **Dynamic Data Catalog:** Auto-introspects Cube metadata or loads custom measures/dimensions from `catalog.json`
 
 ---
 
@@ -323,4 +323,4 @@ npm start
 
 ## License
 
-This project is licensed under the [MIT License](file:///Users/johnnym/code/semantic-jev/LICENSE).
+This project is licensed under the MIT License
