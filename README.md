@@ -7,9 +7,9 @@
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791.svg)](https://www.postgresql.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Universal Natural Language to Semantic Layer Bridge powered by Jev (TypeSafe System One).**
+**Natural Language to Semantic Layer Bridge powered by Jev (TypeSafe System One).**
 
-Convert unstructured user inquiries into certified, governed metric queries executed safely against any semantic layer—with **calibrated confidence gating**, **zero SQL hallucinations**, and **real-time latency tracking**.
+Convert unstructured user inquiries into certified, governed metric queries executed safely against any semantic layer with calibrated confidence gating, zero SQL hallucinations, and real-time latency tracking.
 
 ---
 
@@ -201,7 +201,7 @@ Available REPL commands:
 
 ---
 
-## 🛠 Project Architecture
+## Project Architecture
 
 ```text
 semantic-jev/
@@ -230,7 +230,7 @@ semantic-jev/
 
 ---
 
-## 📖 Programmatic API Usage
+## Programmatic API Usage
 
 Use `semantic-jev` as a microservice library within your backend:
 

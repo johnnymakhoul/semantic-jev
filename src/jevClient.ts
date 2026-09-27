@@ -67,7 +67,6 @@ export class JevClient {
               year: 'Yearly aggregation or by year',
               none: 'No specific time grain'
             }),
-            filter_emea: noul('Does the user explicitly filter to the EMEA region?'),
             is_analytic_query: noul('Is this an analytical query for metrics from a data warehouse?'),
             time_scope: choice('What time range is specified in the request?', {
               explicit_range: 'An explicit time range such as this year, last quarter, or specific dates',
@@ -79,7 +78,6 @@ export class JevClient {
         const metricAnswer = response.answers.metric;
         const dimensionAnswer = response.answers.dimension;
         const timeGrainAnswer = response.answers.time_grain;
-        const emeaFilter = response.answers.filter_emea.noul;
         const isAnalytic = response.answers.is_analytic_query.noul;
         const timeScope = response.answers.time_scope;
 
@@ -93,13 +91,12 @@ export class JevClient {
 
         const metrics: string[] = [metricAnswer.choice];
         const dimensions: string[] = dimensionAnswer.choice !== 'none' ? [dimensionAnswer.choice] : [];
-        const filters = emeaFilter > 0.6
-          ? [{ field: 'customer__region', operator: 'equals' as const, values: ['EMEA'] }]
-          : [];
-        const timeDimensions = timeGrainAnswer.choice !== 'none'
+        const filters: CanonicalQuery['filters'] = [];
+        const timeDim = this.catalog.timeDimensions?.[0];
+        const timeDimensions = (timeGrainAnswer.choice !== 'none' && timeDim)
           ? [
               {
-                field: 'order_date',
+                field: timeDim.id,
                 granularity: timeGrainAnswer.choice as 'day' | 'week' | 'month' | 'quarter' | 'year',
                 dateRange: 'This year'
               }
